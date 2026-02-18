@@ -48,6 +48,9 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const data = profileSchema.parse(body)
 
+    // Accept optional photos array (Cloudinary URLs)
+    const photos = Array.isArray(body.photos) ? body.photos : undefined
+
     const profile = await prisma.userProfile.upsert({
       where: { userId: user.id },
       update: {
@@ -56,6 +59,7 @@ export async function PATCH(request: NextRequest) {
         occupation: data.occupation,
         neighborhood: data.neighborhood,
         city: data.city,
+        ...(photos !== undefined && { photos: photos as any }),
       },
       create: {
         userId: user.id,
@@ -64,6 +68,7 @@ export async function PATCH(request: NextRequest) {
         occupation: data.occupation,
         neighborhood: data.neighborhood,
         city: data.city,
+        ...(photos !== undefined && { photos: photos as any }),
       },
     })
 

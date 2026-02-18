@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { sendViewingConfirmedEmail } from '@/lib/email'
+import { sendViewingConfirmedSms } from '@/lib/sms'
+import { notifyViewingConfirmed } from '@/lib/notifications'
 
 export async function POST(
   request: NextRequest,
@@ -44,7 +47,32 @@ export async function POST(
         status: 'CONFIRMED',
         confirmedSlot: slotDate,
       },
+      include: {
+        listing: { select: { neighborhood: true, city: true } },
+        host: { select: { email: true, phone: true, profile: { select: { displayName: true } } } },
+        seeker: { select: { email: true, phone: true, profile: { select: { displayName: true } } } },
+      },
     })
+
+    // Send notifications to both parties (fire-and-forget)
+    const dateStr = slotDate.toLocaleString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    const hostData = updated.host as any
+    const seekerData = updated.seeker as any
+    const neighborhood = updated.listing.neighborhood
+
+    if (seekerData?.email) {
+      sendViewingConfirmedEmail(seekerData.email, seekerData.profile?.displayName || 'there', neighborhood, slotDate.toISOString(), 'seeker').catch(() => {})
+    }
+    if (seekerData?.phone) {
+      sendViewingConfirmedSms(seekerData.phone, neighborhood, dateStr).catch(() => {})
+    }
+    if (hostData?.email) {
+      sendViewingConfirmedEmail(hostData.email, hostData.profile?.displayName || 'there', neighborhood, slotDate.toISOString(), 'host').catch(() => {})
+    }
+
+    // In-app notifications for both
+    notifyViewingConfirmed(viewing.seekerUserId, neighborhood, slotDate.toISOString()).catch(() => {})
+    notifyViewingConfirmed(viewing.hostUserId, neighborhood, slotDate.toISOString()).catch(() => {})
 
     return NextResponse.json({ message: 'Viewing confirmed', viewing: updated })
   } catch (error) {

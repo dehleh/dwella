@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { AppShell } from '@/components/AppShell'
-import { User, Camera, Shield, MapPin, Briefcase, Edit3, Save, CheckCircle } from 'lucide-react'
+import { User, Camera, Shield, MapPin, Briefcase, Edit3, Save, CheckCircle, Loader2 } from 'lucide-react'
+import { uploadImage } from '@/lib/utils'
 import Link from 'next/link'
 
 interface ProfileData {
@@ -161,7 +162,23 @@ export default function ProfilePage() {
               {editing && (
                 <label className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer opacity-0 hover:opacity-100 transition-opacity">
                   <Camera size={20} className="text-white" />
-                  <input type="file" accept="image/*" className="hidden" onChange={() => {}} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const url = await uploadImage(file, 'profiles')
+                        setProfile({ ...profile, photos: [url, ...profile.photos.slice(1)] })
+                        setMessage('Photo uploaded!')
+                        setTimeout(() => setMessage(''), 3000)
+                      } catch (err: any) {
+                        setMessage(err.message || 'Photo upload failed')
+                      }
+                    }}
+                  />
                 </label>
               )}
             </div>

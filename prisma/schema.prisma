@@ -42,6 +42,7 @@ model User {
   reportsInitiated     Report[] @relation("Reporter")
   reportsReceived      Report[] @relation("ReportedUser")
   adminActions         AdminActionLog[]
+  notifications        Notification[]
 
   @@map("users")
 }
@@ -421,4 +422,40 @@ model AdminActionLog {
 
   @@index([targetType, targetId])
   @@map("admin_action_logs")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id          String           @id @default(uuid())
+  userId      String           @map("user_id")
+  type        NotificationType
+  title       String
+  body        String
+  linkUrl     String?          @map("link_url")
+  isRead      Boolean          @default(false) @map("is_read")
+  metadata    Json             @default("{}")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  MESSAGE
+  UNLOCK_REQUEST
+  UNLOCK_APPROVED
+  UNLOCK_DECLINED
+  PAYMENT_RECEIVED
+  VERIFICATION_APPROVED
+  VERIFICATION_REJECTED
+  VIEWING_PROPOSED
+  VIEWING_CONFIRMED
+  VIEWING_CANCELLED
+  REPORT_UPDATE
+  SYSTEM
 }

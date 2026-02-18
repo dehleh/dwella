@@ -102,18 +102,54 @@ export function generateRulesText(rules: Record<string, string>): string[] {
     .map(([key, value]) => labels[key][value] || value)
 }
 
-export async function uploadImage(file: File): Promise<string> {
-  // Placeholder for image upload
-  // In production, integrate with Cloudinary or similar service
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      // Return base64 as placeholder
-      resolve(reader.result as string)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+/**
+ * Upload a single image file via the /api/upload endpoint (Cloudinary)
+ */
+export async function uploadImage(
+  file: File,
+  folder: 'profiles' | 'listings' | 'kyc' | 'messages' = 'profiles'
+): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('folder', folder)
+
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
   })
+
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.error || 'Upload failed')
+  }
+
+  const data = await res.json()
+  return data.url
+}
+
+/**
+ * Upload multiple image files via the /api/upload endpoint (Cloudinary)
+ */
+export async function uploadImages(
+  files: File[],
+  folder: 'profiles' | 'listings' | 'kyc' | 'messages' = 'listings'
+): Promise<string[]> {
+  const formData = new FormData()
+  files.forEach((file) => formData.append('files', file))
+  formData.append('folder', folder)
+
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.error || 'Upload failed')
+  }
+
+  const data = await res.json()
+  return data.uploads.map((u: { url: string }) => u.url)
 }
 
 export function generateAvatarUrl(name: string): string {

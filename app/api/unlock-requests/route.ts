@@ -3,6 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { sendUnlockRequestEmail } from '@/lib/email'
+import { notifyUnlockRequest } from '@/lib/notifications'
 
 const UNLOCK_FEE = 2000 // ₦2,000 MVP unlock fee
 
@@ -63,6 +65,27 @@ export async function POST(request: NextRequest) {
         hostAutoApprove: false,
       },
     })
+
+    // Notify host via email (fire-and-forget)
+    const [hostUser, seekerProfile] = await Promise.all([
+      prisma.user.findUnique({ where: { id: listing.hostUserId }, include: { profile: true } }),
+      prisma.userProfile.findUnique({ where: { userId: user.id } }),
+    ])
+    if (hostUser?.email) {
+      sendUnlockRequestEmail(
+        hostUser.email,
+        hostUser.profile?.displayName || 'Host',
+        seekerProfile?.displayName || 'A seeker',
+        listing.neighborhood
+      ).catch(() => {})
+    }
+
+    // In-app notification
+    notifyUnlockRequest(
+      listing.hostUserId,
+      seekerProfile?.displayName || 'A seeker',
+      listing.neighborhood
+    ).catch(() => {})
 
     return NextResponse.json(unlockRequest, { status: 201 })
   } catch (error) {

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
-import { Shield, Upload, Camera, CheckCircle, Clock, AlertTriangle, ArrowRight, FileText } from 'lucide-react'
+import { Shield, Upload, Camera, CheckCircle, Clock, AlertTriangle, ArrowRight, FileText, Loader2 } from 'lucide-react'
+import { uploadImage } from '@/lib/utils'
 
 type VerificationStep = 'info' | 'id-upload' | 'selfie' | 'review' | 'status'
 
@@ -62,18 +63,28 @@ export default function VerificationPage() {
     setLoading(true)
     setError('')
     try {
-      // In production, files would be uploaded to a secure storage and only refs sent
+      // Upload KYC documents to Cloudinary
+      const artifacts: { type: string; uri: string }[] = []
+
+      if (formData.idFrontFile) {
+        const url = await uploadImage(formData.idFrontFile, 'kyc')
+        artifacts.push({ type: 'ID_FRONT', uri: url })
+      }
+      if (formData.idBackFile) {
+        const url = await uploadImage(formData.idBackFile, 'kyc')
+        artifacts.push({ type: 'ID_BACK', uri: url })
+      }
+      if (formData.selfieFile) {
+        const url = await uploadImage(formData.selfieFile, 'kyc')
+        artifacts.push({ type: 'SELFIE', uri: url })
+      }
+
       const payload = {
         legalName: formData.legalName,
         dateOfBirth: formData.dateOfBirth,
         idType: formData.idType,
         idNumber: formData.idNumber,
-        // For MVP: simulate file upload with placeholder URIs
-        artifacts: [
-          { type: 'ID_FRONT', uri: `kyc/${Date.now()}/id-front` },
-          { type: 'ID_BACK', uri: `kyc/${Date.now()}/id-back` },
-          { type: 'SELFIE', uri: `kyc/${Date.now()}/selfie` },
-        ],
+        artifacts,
       }
 
       const res = await fetch('/api/verification/submit', {

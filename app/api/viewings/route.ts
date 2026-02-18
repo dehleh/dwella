@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { notifyViewingProposed } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +61,14 @@ export async function POST(request: NextRequest) {
         status: 'PROPOSED',
       },
     })
+
+    // Notify host of new viewing proposal (fire-and-forget)
+    const seekerProfile = await prisma.userProfile.findUnique({ where: { userId: user.id } })
+    notifyViewingProposed(
+      listing.hostUserId,
+      seekerProfile?.displayName || 'A seeker',
+      listing.neighborhood
+    ).catch(() => {})
 
     return NextResponse.json({ message: 'Viewing proposed', viewing }, { status: 201 })
   } catch (error) {

@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
-import { Home, MapPin, DollarSign, Calendar, Upload, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
+import { Home, MapPin, DollarSign, Calendar, Upload, ArrowRight, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'
+import { uploadImages } from '@/lib/utils'
 
 interface ListingFormData {
   city: string
@@ -63,6 +64,12 @@ export default function CreateListingPage() {
     setLoading(true)
     setError('')
     try {
+      // Upload photos to Cloudinary first
+      let photoUrls: string[] = []
+      if (formData.photos.length > 0) {
+        photoUrls = await uploadImages(formData.photos, 'listings')
+      }
+
       const payload = {
         city: formData.city,
         neighborhood: formData.neighborhood,
@@ -74,6 +81,7 @@ export default function CreateListingPage() {
         minStayMonths: parseInt(formData.minStayMonths),
         availableFrom: formData.availableFrom,
         rules: formData.rules,
+        photos: photoUrls,
       }
 
       const res = await fetch('/api/listings', {

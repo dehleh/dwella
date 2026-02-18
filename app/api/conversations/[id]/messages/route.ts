@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { sendNewMessageEmail } from '@/lib/email'
+import { notifyNewMessage } from '@/lib/notifications'
 
 // Simple rate limiting (in-memory for MVP)
 const rateLimits = new Map<string, number[]>()
@@ -88,6 +90,33 @@ export async function POST(
       where: { id: params.id },
       data: { updatedAt: new Date() },
     })
+
+    // Send email notification to the other party (fire-and-forget, throttled)
+    const recipientId = conversation.hostUserId === user.id ? conversation.seekerUserId : conversation.hostUserId
+    const [recipient, senderProfile, conversationWithListing] = await Promise.all([
+      prisma.user.findUnique({ where: { id: recipientId }, include: { profile: true } }),
+      prisma.userProfile.findUnique({ where: { userId: user.id } }),
+      prisma.conversation.findUnique({ where: { id: params.id }, include: { listing: { select: { neighborhood: true } } } }),
+    ])
+    if (recipient?.email && conversationWithListing) {
+      sendNewMessageEmail(
+        recipient.email,
+        recipient.profile?.displayName || 'there',
+        senderProfile?.displayName || 'Someone',
+        conversationWithListing.listing.neighborhood,
+        params.id
+      ).catch(() => {})
+    }
+
+    // In-app notification
+    if (conversationWithListing) {
+      notifyNewMessage(
+        recipientId,
+        senderProfile?.displayName || 'Someone',
+        conversationWithListing.listing.neighborhood,
+        params.id
+      ).catch(() => {})
+    }
 
     return NextResponse.json({
       ...message,

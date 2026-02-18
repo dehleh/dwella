@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
 import { signupSchema } from '@/lib/validations'
+import { sendWelcomeEmail } from '@/lib/email'
+import { sendWelcomeSms } from '@/lib/sms'
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,6 +64,15 @@ export async function POST(request: NextRequest) {
         status: 'NOT_STARTED',
       }
     })
+
+    // Send welcome email/SMS (fire-and-forget)
+    const name = validatedData.email?.split('@')[0] || 'there'
+    if (validatedData.email) {
+      sendWelcomeEmail(validatedData.email, name).catch(() => {})
+    }
+    if (validatedData.phone) {
+      sendWelcomeSms(validatedData.phone, name).catch(() => {})
+    }
     
     return NextResponse.json({
       message: 'Account created successfully',

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthUser } from '@/lib/auth'
+import { notifyUnlockDeclined } from '@/lib/notifications'
 
 export async function POST(
   request: NextRequest,
@@ -22,7 +23,11 @@ export async function POST(
     const updated = await prisma.unlockRequest.update({
       where: { id: params.id },
       data: { status: 'DECLINED' },
+      include: { listing: { select: { neighborhood: true } } },
     })
+
+    // Notify seeker
+    notifyUnlockDeclined(unlockRequest.seekerUserId, updated.listing.neighborhood).catch(() => {})
 
     return NextResponse.json({ message: 'Unlock request declined', unlockRequest: updated })
   } catch (error) {

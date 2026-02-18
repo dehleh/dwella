@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
+import { notifyPaymentReceived } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,6 +96,21 @@ export async function POST(request: NextRequest) {
           }
         }
       })
+
+      // Notify host of payment (outside transaction, fire-and-forget)
+      if (payment.unlockRequestId) {
+        const ur = await prisma.unlockRequest.findUnique({
+          where: { id: payment.unlockRequestId },
+          include: { seeker: { include: { profile: true } } },
+        })
+        if (ur) {
+          notifyPaymentReceived(
+            ur.hostUserId,
+            ur.seeker.profile?.displayName || 'A seeker',
+            payment.amount
+          ).catch(() => {})
+        }
+      }
 
       return NextResponse.json({ received: true })
     }

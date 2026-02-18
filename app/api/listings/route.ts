@@ -60,6 +60,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = listingSchema.parse(body)
     
+    // Accept optional photos array (Cloudinary URLs)
+    const photos = Array.isArray(body.photos) ? body.photos : []
+
     // Create listing
     const listing = await prisma.listing.create({
       data: {
@@ -74,6 +77,7 @@ export async function POST(request: NextRequest) {
         minStayMonths: validatedData.minStayMonths,
         availableFrom: new Date(validatedData.availableFrom),
         rules: validatedData.rules as any,
+        photos: photos as any,
         status: 'DRAFT', // Must publish separately
       }
     })
