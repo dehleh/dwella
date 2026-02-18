@@ -10,6 +10,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
+    // Transform roles object from form into role string for validation
+    if (body.roles && !body.role) {
+      const { host, seeker } = body.roles
+      if (host && seeker) body.role = 'both'
+      else if (host) body.role = 'host'
+      else if (seeker) body.role = 'seeker'
+    }
+    
     // Validate input
     const validatedData = signupSchema.parse(body)
     
