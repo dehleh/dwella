@@ -1,0 +1,424 @@
+// Dwella Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTH
+// ============================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String?   @unique
+  phone         String?   @unique
+  passwordHash  String?   @map("password_hash")
+  roles         Json      @default("{\"host\": false, \"seeker\": false}")
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+  
+  // Relations
+  profile              UserProfile?
+  preferences          Preferences?
+  verificationRequests VerificationRequest[]
+  listings             Listing[]
+  hostConversations    Conversation[] @relation("HostConversations")
+  seekerConversations  Conversation[] @relation("SeekerConversations")
+  sentMessages         Message[]
+  blocksInitiated      Block[] @relation("Blocker")
+  blocksReceived       Block[] @relation("Blocked")
+  hostUnlockRequests   UnlockRequest[] @relation("HostUnlocks")
+  seekerUnlockRequests UnlockRequest[] @relation("SeekerUnlocks")
+  payments             PaymentTransaction[]
+  contactReveals       ContactReveal[]
+  hostViewings         Viewing[] @relation("HostViewings")
+  seekerViewings       Viewing[] @relation("SeekerViewings")
+  reportsInitiated     Report[] @relation("Reporter")
+  reportsReceived      Report[] @relation("ReportedUser")
+  adminActions         AdminActionLog[]
+
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+model UserProfile {
+  userId        String   @id @map("user_id")
+  displayName   String   @map("display_name")
+  bio           String?
+  occupation    String?
+  neighborhood  String?
+  city          String?
+  photos        Json     @default("[]")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+// ============================================
+// VERIFICATION (KYC)
+// ============================================
+
+model VerificationRequest {
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  level              VerificationLevel   @default(STANDARD)
+  status             VerificationStatus  @default(NOT_STARTED)
+  providerRef        String?             @map("provider_ref")
+  submittedAt        DateTime?           @map("submitted_at")
+  decidedAt          DateTime?           @map("decided_at")
+  decisionReasonCode String?             @map("decision_reason_code")
+  decisionNote       String?             @map("decision_note")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  
+  user      User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artifacts VerificationArtifact[]
+
+  @@index([userId])
+  @@index([status, submittedAt])
+  @@map("verification_requests")
+}
+
+enum VerificationLevel {
+  STANDARD
+  ENHANCED
+}
+
+enum VerificationStatus {
+  NOT_STARTED
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVIEW
+}
+
+model VerificationArtifact {
+  id                    String   @id @default(uuid())
+  verificationRequestId String   @map("verification_request_id")
+  artifactType          String   @map("artifact_type")
+  secureUri             String   @map("secure_uri")
+  createdAt             DateTime @default(now()) @map("created_at")
+  
+  verificationRequest VerificationRequest @relation(fields: [verificationRequestId], references: [id], onDelete: Cascade)
+
+  @@map("verification_artifacts")
+}
+
+// ============================================
+// PREFERENCES & MATCHING
+// ============================================
+
+model Preferences {
+  userId           String   @id @map("user_id")
+  hardConstraints  Json     @default("{}") @map("hard_constraints")
+  compatibility    Json     @default("{}") 
+  dealbreakers     Json     @default("[]")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("preferences")
+}
+
+// ============================================
+// LISTINGS
+// ============================================
+
+model Listing {
+  id               String        @id @default(uuid())
+  hostUserId       String        @map("host_user_id")
+  status           ListingStatus @default(DRAFT)
+  city             String
+  neighborhood     String
+  geoHash          String?       @map("geo_hash")
+  priceMonthly     Int           @map("price_monthly")
+  deposit          Int?
+  roomType         String        @map("room_type")
+  furnished        Boolean       @default(false)
+  utilitiesIncluded Boolean      @default(false) @map("utilities_included")
+  minStayMonths    Int           @map("min_stay_months")
+  availableFrom    DateTime      @map("available_from")
+  rules            Json          @default("{}")
+  photos           Json          @default("[]")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  
+  host           User             @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
+  conversations  Conversation[]
+  unlockRequests UnlockRequest[]
+  viewings       Viewing[]
+  reports        Report[]
+
+  @@index([city, neighborhood, status])
+  @@index([hostUserId])
+  @@index([priceMonthly])
+  @@map("listings")
+}
+
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  TAKEN
+  REMOVED
+}
+
+// ============================================
+// MESSAGING
+// ============================================
+
+model Conversation {
+  id            String            @id @default(uuid())
+  listingId     String            @map("listing_id")
+  hostUserId    String            @map("host_user_id")
+  seekerUserId  String            @map("seeker_user_id")
+  status        ConversationStatus @default(ACTIVE)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  
+  listing  Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  host     User      @relation("HostConversations", fields: [hostUserId], references: [id], onDelete: Cascade)
+  seeker   User      @relation("SeekerConversations", fields: [seekerUserId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([listingId, hostUserId, seekerUserId])
+  @@map("conversations")
+}
+
+enum ConversationStatus {
+  ACTIVE
+  BLOCKED
+  CLOSED
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String      @map("conversation_id")
+  senderUserId   String      @map("sender_user_id")
+  messageType    MessageType @default(TEXT)
+  body           String?
+  mediaUrl       String?     @map("media_url")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+}
+
+model Block {
+  id              String   @id @default(uuid())
+  blockerUserId   String   @map("blocker_user_id")
+  blockedUserId   String   @map("blocked_user_id")
+  context         Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  blocker User @relation("Blocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerUserId, blockedUserId])
+  @@map("blocks")
+}
+
+// ============================================
+// CONTACT UNLOCK & PAYMENTS
+// ============================================
+
+model UnlockRequest {
+  id              String              @id @default(uuid())
+  listingId       String              @map("listing_id")
+  hostUserId      String              @map("host_user_id")
+  seekerUserId    String              @map("seeker_user_id")
+  status          UnlockRequestStatus @default(PENDING_HOST_APPROVAL)
+  unlockFee       Int                 @map("unlock_fee")
+  hostAutoApprove Boolean             @default(false) @map("host_auto_approve")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  
+  listing        Listing              @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  host           User                 @relation("HostUnlocks", fields: [hostUserId], references: [id], onDelete: Cascade)
+  seeker         User                 @relation("SeekerUnlocks", fields: [seekerUserId], references: [id], onDelete: Cascade)
+  payments       PaymentTransaction[]
+  contactReveals ContactReveal[]
+
+  @@unique([listingId, hostUserId, seekerUserId])
+  @@index([status, createdAt])
+  @@map("unlock_requests")
+}
+
+enum UnlockRequestStatus {
+  PENDING_HOST_APPROVAL
+  APPROVED
+  DECLINED
+  PAYMENT_PENDING
+  PAID
+  CONTACT_REVEALED
+  REFUNDED
+}
+
+model PaymentTransaction {
+  id              String            @id @default(uuid())
+  userId          String            @map("user_id")
+  unlockRequestId String?           @map("unlock_request_id")
+  type            PaymentType
+  provider        String
+  providerTxRef   String            @map("provider_tx_ref")
+  amount          Int
+  currency        String            @default("NGN")
+  status          PaymentStatus     @default(INITIATED)
+  rawWebhook      Json?             @map("raw_webhook")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unlockRequest UnlockRequest? @relation(fields: [unlockRequestId], references: [id], onDelete: SetNull)
+
+  @@index([providerTxRef])
+  @@index([status, createdAt])
+  @@map("payment_transactions")
+}
+
+enum PaymentType {
+  UNLOCK_FEE
+  REFUND
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  REFUNDED
+  CHARGEBACK
+}
+
+model ContactReveal {
+  id                String   @id @default(uuid())
+  unlockRequestId   String   @map("unlock_request_id")
+  revealedToUserId  String   @map("revealed_to_user_id")
+  revealedFields    Json     @map("revealed_fields")
+  createdAt         DateTime @default(now()) @map("created_at")
+  
+  unlockRequest UnlockRequest @relation(fields: [unlockRequestId], references: [id], onDelete: Cascade)
+  revealedTo    User          @relation(fields: [revealedToUserId], references: [id], onDelete: Cascade)
+
+  @@unique([unlockRequestId, revealedToUserId])
+  @@map("contact_reveals")
+}
+
+// ============================================
+// VIEWINGS
+// ============================================
+
+model Viewing {
+  id             String        @id @default(uuid())
+  listingId      String        @map("listing_id")
+  hostUserId     String        @map("host_user_id")
+  seekerUserId   String        @map("seeker_user_id")
+  status         ViewingStatus @default(PROPOSED)
+  proposedSlots  Json          @map("proposed_slots")
+  confirmedSlot  DateTime?     @map("confirmed_slot")
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  host    User    @relation("HostViewings", fields: [hostUserId], references: [id], onDelete: Cascade)
+  seeker  User    @relation("SeekerViewings", fields: [seekerUserId], references: [id], onDelete: Cascade)
+
+  @@map("viewings")
+}
+
+enum ViewingStatus {
+  PROPOSED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+// ============================================
+// REPORTS & MODERATION
+// ============================================
+
+model Report {
+  id                String         @id @default(uuid())
+  reporterUserId    String         @map("reporter_user_id")
+  reportedUserId    String?        @map("reported_user_id")
+  reportedListingId String?        @map("reported_listing_id")
+  reportedMessageId String?        @map("reported_message_id")
+  category          ReportCategory
+  description       String
+  evidenceUrls      Json?          @map("evidence_urls")
+  status            ReportStatus   @default(OPEN)
+  priority          ReportPriority @default(MEDIUM)
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  
+  reporter      User     @relation("Reporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  reportedUser  User?    @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  reportedListing Listing? @relation(fields: [reportedListingId], references: [id], onDelete: SetNull)
+
+  @@index([status, priority, createdAt])
+  @@map("reports")
+}
+
+enum ReportCategory {
+  SCAM
+  HARASSMENT
+  IMPERSONATION
+  INAPPROPRIATE_CONTENT
+  SAFETY_RISK
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ============================================
+// ADMIN & AUDIT
+// ============================================
+
+model AdminActionLog {
+  id          String   @id @default(uuid())
+  adminUserId String   @map("admin_user_id")
+  action      String
+  targetType  String   @map("target_type")
+  targetId    String   @map("target_id")
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  admin User @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@map("admin_action_logs")
+}
