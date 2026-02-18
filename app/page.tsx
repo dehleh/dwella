@@ -13,13 +13,13 @@ export default function HomePage() {
           </div>
           <div className="flex gap-4">
             <Link 
-              href="/login" 
+              href="/auth/login" 
               className="px-4 py-2 text-brand-600 hover:text-brand-700"
             >
               Log in
             </Link>
             <Link 
-              href="/signup" 
+              href="/auth/signup" 
               className="px-6 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600"
             >
               Sign up
@@ -151,7 +151,7 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold mb-4">Ready to find your perfect match?</h2>
           <p className="text-xl mb-8 text-brand-50">Join Dwella today and access verified roommates in your area</p>
           <Link 
-            href="/signup"
+            href="/auth/signup"
             className="inline-block px-8 py-3 bg-white text-brand-600 rounded-lg hover:bg-gray-100 font-semibold"
           >
             Get Started Free

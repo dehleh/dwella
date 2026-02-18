@@ -84,7 +84,7 @@ function SignupContent() {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-brand-600 hover:text-brand-500">
+          <Link href="/auth/login" className="font-medium text-brand-600 hover:text-brand-500">
             Log in
           </Link>
         </p>
