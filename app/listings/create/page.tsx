@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import { Home, MapPin, DollarSign, Calendar, Upload, ArrowRight, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 import { uploadImages } from '@/lib/utils'
 
 interface ListingFormData {
@@ -107,8 +108,13 @@ export default function CreateListingPage() {
   return (
     <AppShell>
       <div className="max-w-2xl mx-auto py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Listing</h1>
-        <p className="text-gray-600 mb-8">List your spare room in a few easy steps.</p>
+        <div className="flex items-center gap-3 mb-2">
+          <Link href="/listings" className="p-2 hover:bg-gray-100 rounded-lg">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">Create Your Listing</h1>
+        </div>
+        <p className="text-gray-600 mb-8 ml-12">List your spare room in a few easy steps.</p>
 
         {/* Progress Bar */}
         <div className="flex items-center gap-1 mb-8">
@@ -215,6 +221,9 @@ export default function CreateListingPage() {
                   <option value="ENSUITE">Ensuite (private bath)</option>
                   <option value="SHARED_BATH">Shared Bath</option>
                   <option value="STUDIO_ROOM">Studio Room</option>
+                  <option value="SHARED_APARTMENT">Shared Apartment</option>
+                  <option value="ONE_BEDROOM">1 Bedroom Flat</option>
+                  <option value="TWO_BEDROOM">2 Bedroom Flat</option>
                 </select>
               </div>
 
@@ -388,7 +397,9 @@ export default function CreateListingPage() {
                 <ReviewRow label="Location" value={`${formData.neighborhood}, ${formData.city}`} />
                 <ReviewRow label="Monthly Rent" value={`₦${parseInt(formData.priceMonthly || '0').toLocaleString()}`} />
                 {formData.deposit && <ReviewRow label="Deposit" value={`₦${parseInt(formData.deposit).toLocaleString()}`} />}
-                <ReviewRow label="Room Type" value={formData.roomType === 'ENSUITE' ? 'Ensuite' : formData.roomType === 'SHARED_BATH' ? 'Shared Bath' : 'Studio Room'} />
+                <ReviewRow label="Room Type" value={
+                  { ENSUITE: 'Ensuite', SHARED_BATH: 'Shared Bath', STUDIO_ROOM: 'Studio Room', SHARED_APARTMENT: 'Shared Apartment', ONE_BEDROOM: '1 Bedroom Flat', TWO_BEDROOM: '2 Bedroom Flat' }[formData.roomType] || formData.roomType
+                } />
                 <ReviewRow label="Furnished" value={formData.furnished ? 'Yes' : 'No'} />
                 <ReviewRow label="Utilities" value={formData.utilitiesIncluded ? 'Included' : 'Not included'} />
                 <ReviewRow label="Available From" value={formData.availableFrom} />

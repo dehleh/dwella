@@ -4,7 +4,8 @@ import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
 import ListingCard from '@/components/ListingCard'
-import { Search, SlidersHorizontal, X, MapPin } from 'lucide-react'
+import { Search, SlidersHorizontal, X, MapPin, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 interface ListingResult {
   id: string
@@ -99,9 +100,14 @@ function ListingsContent() {
       <div className="space-y-6">
         {/* Header + Search */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Browse Rooms</h1>
-            <p className="text-gray-600">Find verified spare rooms in your area</p>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
+              <ArrowLeft size={20} />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Browse Rooms</h1>
+              <p className="text-gray-600">Find verified spare rooms in your area</p>
+            </div>
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}

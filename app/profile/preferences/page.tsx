@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AppShell } from '@/components/AppShell'
 import { ArrowLeft, Save, Sliders } from 'lucide-react'
 import Link from 'next/link'
 
@@ -83,16 +82,13 @@ export default function PreferencesPage() {
 
   if (loading) {
     return (
-      <AppShell>
         <div className="max-w-2xl mx-auto py-8 space-y-4">
           {[1, 2, 3, 4].map(i => <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />)}
         </div>
-      </AppShell>
     )
   }
 
   return (
-    <AppShell>
       <div className="max-w-2xl mx-auto py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -186,7 +182,7 @@ export default function PreferencesPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Room Type</label>
             <div className="flex gap-3 flex-wrap">
-              {['ENSUITE', 'SHARED_BATH', 'STUDIO_ROOM'].map(type => (
+              {['ENSUITE', 'SHARED_BATH', 'STUDIO_ROOM', 'SHARED_APARTMENT', 'ONE_BEDROOM', 'TWO_BEDROOM'].map(type => (
                 <label key={type} className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -198,7 +194,7 @@ export default function PreferencesPage() {
                     }}
                     className="rounded border-gray-300 text-brand-500 focus:ring-brand-500"
                   />
-                  <span className="text-sm">{type === 'ENSUITE' ? 'Ensuite' : type === 'SHARED_BATH' ? 'Shared Bath' : 'Studio Room'}</span>
+                  <span className="text-sm">{{ ENSUITE: 'Ensuite', SHARED_BATH: 'Shared Bath', STUDIO_ROOM: 'Studio Room', SHARED_APARTMENT: 'Shared Apartment', ONE_BEDROOM: '1 Bedroom Flat', TWO_BEDROOM: '2 Bedroom Flat' }[type]}</span>
                 </label>
               ))}
             </div>
@@ -321,7 +317,6 @@ export default function PreferencesPage() {
           </button>
         </div>
       </div>
-    </AppShell>
   )
 }
 

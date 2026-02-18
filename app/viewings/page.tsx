@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Calendar, MapPin, Clock, CheckCircle, XCircle, Eye, Loader2 } from 'lucide-react'
+import { Calendar, MapPin, Clock, CheckCircle, XCircle, Eye, Loader2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { format } from 'date-fns'
 
 interface Viewing {
@@ -115,10 +116,15 @@ export default function ViewingsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-brand-500" />
-          Viewings
-        </h1>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Calendar className="h-6 w-6 text-brand-500" />
+            Viewings
+          </h1>
+        </div>
       </div>
 
       {/* Filters */}

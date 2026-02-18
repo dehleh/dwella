@@ -1,11 +1,39 @@
-// POST /api/upload — Handle file uploads to Cloudinary
+// POST /api/upload — Handle file uploads to Cloudinary (or local fallback)
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { uploadToCloudinary, uploadMultipleToCloudinary, type UploadFolder } from '@/lib/cloudinary'
+import { writeFile, mkdir } from 'fs/promises'
+import path from 'path'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
 const VALID_FOLDERS: UploadFolder[] = ['profiles', 'listings', 'kyc', 'messages']
+
+// Check if Cloudinary is configured
+function isCloudinaryConfigured(): boolean {
+  return !!(
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  )
+}
+
+// Fallback: save to public/uploads and return the URL
+async function saveLocally(
+  buffer: Buffer,
+  fileName: string,
+  folder: string
+): Promise<{ url: string; publicId: string }> {
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', folder)
+  await mkdir(uploadsDir, { recursive: true })
+  const uniqueName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+  const filePath = path.join(uploadsDir, uniqueName)
+  await writeFile(filePath, buffer)
+  return {
+    url: `/uploads/${folder}/${uniqueName}`,
+    publicId: `local/${folder}/${uniqueName}`,
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,7 +85,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Convert File objects to buffers and upload
+    // Convert File objects to buffers
     const fileBuffers = await Promise.all(
       files.map(async (file) => ({
         buffer: Buffer.from(await file.arrayBuffer()),
@@ -65,23 +93,41 @@ export async function POST(request: NextRequest) {
       }))
     )
 
-    const uploadOptions = {
-      folder: folder as UploadFolder,
-      userId: user.id,
-      maxWidth: folder === 'profiles' ? 600 : folder === 'kyc' ? 2000 : 1200,
-      maxHeight: folder === 'profiles' ? 600 : folder === 'kyc' ? 2000 : 1200,
-      quality: folder === 'kyc' ? 95 : 80,
-    }
+    const useCloudinary = isCloudinaryConfigured()
 
-    if (files.length === 1) {
-      const result = await uploadToCloudinary(fileBuffers[0].buffer, uploadOptions)
-      return NextResponse.json({ url: result.url, publicId: result.publicId })
-    }
+    if (useCloudinary) {
+      // Upload to Cloudinary
+      const uploadOptions = {
+        folder: folder as UploadFolder,
+        userId: user.id,
+        maxWidth: folder === 'profiles' ? 600 : folder === 'kyc' ? 2000 : 1200,
+        maxHeight: folder === 'profiles' ? 600 : folder === 'kyc' ? 2000 : 1200,
+        quality: folder === 'kyc' ? 95 : 80,
+      }
 
-    const results = await uploadMultipleToCloudinary(fileBuffers, uploadOptions)
-    return NextResponse.json({
-      uploads: results.map((r) => ({ url: r.url, publicId: r.publicId })),
-    })
+      if (files.length === 1) {
+        const result = await uploadToCloudinary(fileBuffers[0].buffer, uploadOptions)
+        return NextResponse.json({ url: result.url, publicId: result.publicId })
+      }
+
+      const results = await uploadMultipleToCloudinary(fileBuffers, uploadOptions)
+      return NextResponse.json({
+        uploads: results.map((r) => ({ url: r.url, publicId: r.publicId })),
+      })
+    } else {
+      // Fallback: save locally
+      if (files.length === 1) {
+        const result = await saveLocally(fileBuffers[0].buffer, fileBuffers[0].name, folder)
+        return NextResponse.json({ url: result.url, publicId: result.publicId })
+      }
+
+      const results = await Promise.all(
+        fileBuffers.map((fb) => saveLocally(fb.buffer, fb.name, folder))
+      )
+      return NextResponse.json({
+        uploads: results.map((r) => ({ url: r.url, publicId: r.publicId })),
+      })
+    }
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })

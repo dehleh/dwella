@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { AppShell } from '@/components/AppShell'
-import { User, Camera, Shield, MapPin, Briefcase, Edit3, Save, CheckCircle, Loader2 } from 'lucide-react'
+import { User, Camera, Shield, MapPin, Briefcase, Edit3, Save, CheckCircle, Loader2, ArrowLeft } from 'lucide-react'
 import { uploadImage } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -78,21 +77,23 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <AppShell>
         <div className="max-w-3xl mx-auto py-8 space-y-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
           ))}
         </div>
-      </AppShell>
     )
   }
 
   return (
-    <AppShell>
       <div className="max-w-3xl mx-auto py-8 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
+              <ArrowLeft size={20} />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+          </div>
           {!editing ? (
             <button
               onClick={() => setEditing(true)}
@@ -259,7 +260,6 @@ export default function ProfilePage() {
           </Link>
         </div>
       </div>
-    </AppShell>
   )
 }
 

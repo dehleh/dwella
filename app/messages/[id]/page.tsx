@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { AppShell } from '@/components/AppShell'
 import { ArrowLeft, Send, Shield, Flag, Ban, AlertTriangle, Info } from 'lucide-react'
 import Link from 'next/link'
 
@@ -111,28 +110,23 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <AppShell>
         <div className="max-w-3xl mx-auto py-8">
           <div className="h-96 bg-gray-100 rounded-xl animate-pulse" />
         </div>
-      </AppShell>
     )
   }
 
   if (!convo) {
     return (
-      <AppShell>
         <div className="max-w-3xl mx-auto py-16 text-center">
           <h2 className="text-xl font-bold">Conversation not found</h2>
         </div>
-      </AppShell>
     )
   }
 
   const otherUser = convo.host.id === user?.id ? convo.seeker : convo.host
 
   return (
-    <AppShell>
       <div className="max-w-3xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 10rem)' }}>
         {/* Header */}
         <div className="flex items-center justify-between bg-white px-4 py-3 border-b border-gray-200 rounded-t-xl">
@@ -243,6 +237,5 @@ export default function ChatPage() {
           </div>
         )}
       </div>
-    </AppShell>
   )
 }

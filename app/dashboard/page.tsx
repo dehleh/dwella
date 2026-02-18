@@ -3,7 +3,6 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { AppShell } from '@/components/AppShell'
 import {
   Home, Search, MessageSquare, Shield, Eye, Clock,
   CheckCircle, AlertTriangle, PlusCircle, TrendingUp, Users
@@ -47,7 +46,6 @@ export default function DashboardPage() {
   }
 
   return (
-    <AppShell>
       <div className="space-y-8">
         {/* Welcome Section */}
         <div>
@@ -209,7 +207,6 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
-    </AppShell>
   )
 }
 

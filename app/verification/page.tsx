@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { AppShell } from '@/components/AppShell'
-import { Shield, Upload, Camera, CheckCircle, Clock, AlertTriangle, ArrowRight, FileText, Loader2 } from 'lucide-react'
+import { Shield, Upload, Camera, CheckCircle, Clock, AlertTriangle, ArrowRight, ArrowLeft, FileText, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 import { uploadImage } from '@/lib/utils'
 
 type VerificationStep = 'info' | 'id-upload' | 'selfie' | 'review' | 'status'
@@ -117,7 +117,6 @@ export default function VerificationPage() {
   // Status view
   if (step === 'status') {
     return (
-      <AppShell>
         <div className="max-w-lg mx-auto py-12">
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             {currentStatus === 'APPROVED' && (
@@ -179,15 +178,18 @@ export default function VerificationPage() {
             )}
           </div>
         </div>
-      </AppShell>
     )
   }
 
   return (
-    <AppShell>
       <div className="max-w-2xl mx-auto py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Identity Verification</h1>
+          <div className="flex items-center gap-3 mb-1">
+            <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
+              <ArrowLeft size={20} />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-900">Identity Verification</h1>
+          </div>
           <p className="text-gray-600 mt-1">
             Complete verification to access all Dwella features. Your data is encrypted and secure.
           </p>
@@ -343,6 +345,7 @@ export default function VerificationPage() {
                 file={formData.selfieFile}
                 onFileChange={(f) => setFormData({ ...formData, selfieFile: f })}
                 large
+                capture="user"
               />
 
               <div className="flex gap-3">
@@ -417,7 +420,6 @@ export default function VerificationPage() {
           )}
         </div>
       </div>
-    </AppShell>
   )
 }
 
@@ -426,11 +428,13 @@ function FileUploadBox({
   file,
   onFileChange,
   large,
+  capture,
 }: {
   label: string
   file: File | null
   onFileChange: (f: File) => void
   large?: boolean
+  capture?: 'user' | 'environment'
 }) {
   return (
     <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl cursor-pointer transition-colors hover:border-brand-400 hover:bg-brand-50/50 ${
@@ -444,14 +448,19 @@ function FileUploadBox({
         </div>
       ) : (
         <div className="text-center">
-          <Upload className="text-gray-400 mx-auto mb-1" size={24} />
+          {capture ? (
+            <Camera className="text-gray-400 mx-auto mb-1" size={24} />
+          ) : (
+            <Upload className="text-gray-400 mx-auto mb-1" size={24} />
+          )}
           <p className="text-sm font-medium text-gray-600">{label}</p>
-          <p className="text-xs text-gray-400">Click to upload</p>
+          <p className="text-xs text-gray-400">{capture ? 'Click to take photo' : 'Click to upload'}</p>
         </div>
       )}
       <input
         type="file"
         accept="image/*"
+        capture={capture}
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]

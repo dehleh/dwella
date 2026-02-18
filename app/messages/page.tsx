@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { AppShell } from '@/components/AppShell'
-import { MessageSquare, MapPin } from 'lucide-react'
+import { MessageSquare, MapPin, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 interface ConversationSummary {
   id: string
@@ -45,9 +45,13 @@ export default function MessagesPage() {
   }
 
   return (
-    <AppShell>
       <div className="max-w-3xl mx-auto py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Messages</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg">
+            <ArrowLeft size={20} />
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
+        </div>
 
         {loading ? (
           <div className="space-y-3">
@@ -98,6 +102,5 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
-    </AppShell>
   )
 }

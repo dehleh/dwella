@@ -34,7 +34,7 @@ export const listingSchema = z.object({
   neighborhood: z.string().min(2),
   priceMonthly: z.number().min(1000).max(10000000),
   deposit: z.number().min(0).optional(),
-  roomType: z.enum(['ENSUITE', 'SHARED_BATH', 'STUDIO_ROOM']),
+  roomType: z.enum(['ENSUITE', 'SHARED_BATH', 'STUDIO_ROOM', 'SHARED_APARTMENT', 'ONE_BEDROOM', 'TWO_BEDROOM']),
   furnished: z.boolean(),
   utilitiesIncluded: z.boolean(),
   minStayMonths: z.number().min(1).max(24),
