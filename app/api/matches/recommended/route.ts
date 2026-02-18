@@ -62,10 +62,10 @@ export async function GET(request: NextRequest) {
     })
     
     // Apply hard constraints first
-    listings = applyHardConstraints(listings as any, preferences)
+    const filteredListings = applyHardConstraints(listings as any, preferences) as typeof listings
     
     // Calculate match scores
-    const matches = listings.map(listing => {
+    const matches = filteredListings.map(listing => {
       const matchScore = calculateMatchScore(preferences, listing as any)
       return {
         listing,

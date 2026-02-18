@@ -15,7 +15,7 @@ interface ListingCardProps {
       profile?: {
         displayName: string
         photos: any
-      }
+      } | null
       verificationRequests?: Array<{
         level: string
         status: string
