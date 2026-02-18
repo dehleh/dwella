@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Shield, Upload, Camera, CheckCircle, Clock, AlertTriangle, ArrowRight, ArrowLeft, FileText, Loader2 } from 'lucide-react'
+import { Shield, Upload, Camera, CheckCircle, Clock, AlertTriangle, ArrowRight, ArrowLeft, FileText, Loader2, Video, RefreshCw, X } from 'lucide-react'
 import Link from 'next/link'
 import { uploadImage } from '@/lib/utils'
 
@@ -340,12 +340,9 @@ export default function VerificationPage() {
                 Take a clear selfie. Make sure your face is well-lit and matches your ID photo.
               </p>
 
-              <FileUploadBox
-                label="Your Selfie"
+              <WebcamSelfieCapture
                 file={formData.selfieFile}
                 onFileChange={(f) => setFormData({ ...formData, selfieFile: f })}
-                large
-                capture="user"
               />
 
               <div className="flex gap-3">
@@ -468,5 +465,227 @@ function FileUploadBox({
         }}
       />
     </label>
+  )
+}
+
+function WebcamSelfieCapture({
+  file,
+  onFileChange,
+}: {
+  file: File | null
+  onFileChange: (f: File) => void
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const [webcamActive, setWebcamActive] = useState(false)
+  const [webcamError, setWebcamError] = useState('')
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    )
+    setIsMobile(mobile)
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+      }
+    }
+  }, [])
+
+  const stopWebcam = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    setWebcamActive(false)
+  }, [])
+
+  const startWebcam = async () => {
+    setWebcamError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+      setWebcamActive(true)
+    } catch (err: any) {
+      console.error('Webcam error:', err)
+      if (err.name === 'NotAllowedError') {
+        setWebcamError('Camera access denied. Please allow camera access in your browser settings.')
+      } else if (err.name === 'NotFoundError') {
+        setWebcamError('No camera found. Please connect a camera or upload a photo instead.')
+      } else {
+        setWebcamError('Could not access camera. Please try uploading a photo instead.')
+      }
+    }
+  }
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.translate(canvas.width, 0)
+    ctx.scale(-1, 1)
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const selfieFile = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' })
+        onFileChange(selfieFile)
+        setCapturedImage(canvas.toDataURL('image/jpeg'))
+        stopWebcam()
+      }
+    }, 'image/jpeg', 0.9)
+  }
+
+  const retake = () => {
+    setCapturedImage(null)
+    startWebcam()
+  }
+
+  // On mobile: use native file input with capture
+  if (isMobile) {
+    return (
+      <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl cursor-pointer transition-colors hover:border-brand-400 hover:bg-brand-50/50 h-48 ${
+        file ? 'border-green-400 bg-green-50/50' : 'border-gray-300'
+      }`}>
+        {file ? (
+          <div className="text-center">
+            <CheckCircle className="text-green-500 mx-auto mb-1" size={24} />
+            <p className="text-sm font-medium text-green-700">{file.name}</p>
+            <p className="text-xs text-gray-500">Tap to retake</p>
+          </div>
+        ) : (
+          <div className="text-center">
+            <Camera className="text-gray-400 mx-auto mb-1" size={24} />
+            <p className="text-sm font-medium text-gray-600">Your Selfie</p>
+            <p className="text-xs text-gray-400">Tap to take photo</p>
+          </div>
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          capture="user"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onFileChange(f)
+          }}
+        />
+      </label>
+    )
+  }
+
+  // On desktop: use webcam with getUserMedia
+  return (
+    <div className="space-y-4">
+      <canvas ref={canvasRef} className="hidden" />
+
+      {capturedImage && file && (
+        <div className="relative">
+          <div className="rounded-xl overflow-hidden border-2 border-green-400 bg-green-50/50">
+            <img
+              src={capturedImage}
+              alt="Captured selfie"
+              className="w-full max-h-80 object-contain"
+            />
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <CheckCircle className="text-green-500" size={18} />
+            <span className="text-sm font-medium text-green-700">Selfie captured</span>
+          </div>
+          <button
+            type="button"
+            onClick={retake}
+            className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+          >
+            <RefreshCw size={16} /> Retake Photo
+          </button>
+        </div>
+      )}
+
+      {webcamActive && !capturedImage && (
+        <div className="relative">
+          <div className="rounded-xl overflow-hidden border-2 border-brand-400 bg-black">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full max-h-80 object-contain"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+          </div>
+          <div className="flex gap-3 mt-3">
+            <button
+              type="button"
+              onClick={stopWebcam}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-sm"
+            >
+              <X size={16} /> Cancel
+            </button>
+            <button
+              type="button"
+              onClick={capturePhoto}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-500 text-white rounded-lg hover:bg-brand-600 font-medium text-sm"
+            >
+              <Camera size={16} /> Capture Photo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!webcamActive && !capturedImage && (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={startWebcam}
+            className="w-full h-48 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer transition-colors hover:border-brand-400 hover:bg-brand-50/50"
+          >
+            <Video className="text-gray-400 mb-2" size={32} />
+            <p className="text-sm font-medium text-gray-600">Open Camera</p>
+            <p className="text-xs text-gray-400">Click to start your webcam</p>
+          </button>
+
+          {webcamError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {webcamError}
+            </div>
+          )}
+
+          <div className="text-center">
+            <p className="text-xs text-gray-400 mb-2">Or upload a photo from your device</p>
+            <label className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 cursor-pointer text-sm font-medium">
+              <Upload size={16} /> Upload Photo
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) {
+                    onFileChange(f)
+                    setCapturedImage(URL.createObjectURL(f))
+                  }
+                }}
+              />
+            </label>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

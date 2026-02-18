@@ -30,7 +30,7 @@ const seekerNav = [
 
 const hostNav = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'My Listings', href: '/dashboard/listings', icon: Home },
+  { label: 'My Listings', href: '/listings', icon: Home },
   { label: 'Create Listing', href: '/listings/create', icon: PlusCircle },
   { label: 'Messages', href: '/messages', icon: MessageSquare },
   { label: 'Viewings', href: '/viewings', icon: Calendar },
