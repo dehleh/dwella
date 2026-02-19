@@ -20,6 +20,8 @@ module.exports = {
           800: '#00385C',
           900: '#001D2E',
         },
+        'dwella-blue': '#0088E6',
+        'dwella-purple': '#7C3AED',
       },
     },
   },
